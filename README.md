@@ -169,7 +169,7 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 <!-- CONTACT -->
 ## Contact
 
-Your Name - [@alibrnt](https://twitter.com/alibrnt) - alibaran@tasdemir.us
+Ali Baran Taşdemir - [@alibrnt](https://twitter.com/alibrnt) - alibaran@tasdemir.us
 
 Project Link: [https://github.com/alibtasdemir/WebImageSeg](https://github.com/alibtasdemir/WebImageSeg)
 
