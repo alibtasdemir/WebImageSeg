@@ -3,13 +3,16 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from tqdm import tqdm
 import numpy as np
-import torch.nn as nn
+from early_stopping import EarlyStopping
 import torch.optim as optim
-from model import UNET
+from model import UNET, AttU_Net
 from utils import get_loaders, pixel_accuracy, save_checkpoint, load_checkpoint, save_predictions_as_imgs, plot_training
 from metric_monitor import MetricMonitor
 import os
 import matplotlib.pyplot as plt
+
+from tensorboard_logger import log_value, configure
+
 
 # Hyperparameters etc.
 LEARNING_RATE = 1e-4
@@ -124,9 +127,14 @@ def main():
         ]
     )
 
-    model = UNET(in_channels=3, out_channels=5).to(DEVICE)
-    loss_fn = nn.CrossEntropyLoss()
+    #model = UNET(in_channels=3, out_channels=5).to(DEVICE)
+    model = AttU_Net(img_ch=3, output_ch=5).to(DEVICE)
+    #loss_fn = nn.CrossEntropyLoss()
+    from utils import dice_loss
+    loss_fn = dice_loss
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    
+    early_stopping = EarlyStopping(patience=5, verbose=True)
 
     train_loader, val_loader = get_loaders(
         TRAIN_IMG_DIR,
@@ -141,6 +149,8 @@ def main():
     )
 
     scaler = torch.cuda.amp.GradScaler()
+    
+    configure("logdir/log-attention-1", flush_secs=5)
 
     training_losses = []
     validation_losses = []
@@ -157,6 +167,17 @@ def main():
         val_epoch_loss, val_epoch_acc = validation_fn(val_loader, model, loss_fn, epoch=epoch)
         validation_losses.append(val_epoch_loss)
         validation_acc.append(val_epoch_acc)
+        log_value('training_loss', train_epoch_loss, epoch)
+        log_value('validation_loss', val_epoch_loss, epoch)
+        log_value('training_accuracy', train_epoch_acc, epoch)
+        log_value('validation_accuracy', val_epoch_acc, epoch)
+        
+        early_stopping(val_epoch_loss, model)
+        
+        if early_stopping.early_stop:
+            print("Stopping...")
+            #model.load_state_dict(torch.load(early_stopping.path))
+            break
 
         if (epoch % 10 == 0) or (epoch == 1):
             # save model
@@ -164,7 +185,7 @@ def main():
                 "state_dict": model.state_dict(),
                 "optimizer": optimizer.state_dict(),
             }
-            save_checkpoint(checkpoint, filename=f"checkpoints/checkpoint_{epoch}.pth.tar")
+            save_checkpoint(checkpoint, filename=f"checkpoints/checkpoint_att_{epoch}.pth.tar")
 
             img_save_folder = os.path.join("saved_images", f"epoch_{epoch}")
             if not os.path.exists(img_save_folder):

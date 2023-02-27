@@ -2,8 +2,17 @@
 data/
 # Saved models
 checkpoints/ 
+*/*.pt
+*.pt
 # Progress images
 saved_images/*/epoch*/
+saved_images/epoch*
+*.gif
+# Excel
+*.xlsx
+
+# Tensorboard logs
+logdir/
 
 .coverage
 coverage.xml
