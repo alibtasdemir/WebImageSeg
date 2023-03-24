@@ -2,6 +2,7 @@ import pandas as pd
 from PIL import Image
 from dataset import WebsegDataset
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 import torchvision
 import os
 import torch
@@ -249,6 +250,44 @@ def load_checkpoint(checkpoint: dict, model: torch.nn.Module):
     model.load_state_dict(checkpoint["state_dict"])
 
 
+def tb_save_image(
+    writer: SummaryWriter ,loader: DataLoader, model: torch.nn.Module, epoch: int, device: str ="cuda", max_images: int = 10
+):
+    model.eval()
+    for idx, (x, y) in enumerate(loader):
+        if idx == 10:
+            return
+        x = x.to(device=device)
+        x = x[0,None,...]
+        y = y[0,None,...]
+        
+        with torch.inference_mode():
+            preds = model(x)
+            preds = torch.argmax(preds, dim=1).float()
+            preds = preds.unsqueeze(1)
+            y = torch.argmax(y, dim=1).float().unsqueeze(1)
+            all_preds = []
+            all_masks = []
+            for mask, pred in zip(torch.split(y, 1), torch.split(preds, 1)):
+                mask = mask.squeeze()
+                pred = pred.squeeze()
+
+                mask = torch.Tensor(onehot_to_rgb(mask.cpu().numpy())).permute(2, 0, 1)
+                pred = torch.Tensor(onehot_to_rgb(pred.cpu().numpy())).permute(2, 0, 1)
+                
+                all_masks.append(mask)
+                all_preds.append(pred)
+
+            
+            preds = torch.stack(all_preds) / 255.0
+            y = torch.stack(all_masks) / 255.0
+        
+            x, preds, y = x.squeeze().cpu(), preds.squeeze().cpu(), y.squeeze().cpu()
+            sum = torchvision.utils.make_grid([x, y, preds])
+            # sum = np.concatenate((torch.squeeze(x).cpu(), torch.squeeze(preds).cpu(), torch.squeeze(y).cpu()), axis=1) # tf.squeeze deletes the batch dimension
+            writer.add_image(f"Outputs_B{idx}", sum, global_step=epoch, dataformats="CHW")
+
+
 def save_predictions_as_imgs(
     loader: DataLoader, model: torch.nn.Module, folder: str ="saved_images/", device: str ="cuda"
 ):
@@ -281,8 +320,7 @@ def save_predictions_as_imgs(
                 
                 all_masks.append(mask)
                 all_preds.append(pred)
-
-            
+                
             preds = torch.stack(all_preds)
             y = torch.stack(all_masks)
         

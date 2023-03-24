@@ -10,7 +10,8 @@ saved_images/epoch*
 *.gif
 # Excel
 *.xlsx
-
+# Experiments
+experiments/
 # Tensorboard logs
 logdir/
 

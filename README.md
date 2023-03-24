@@ -124,9 +124,9 @@ In progress...
 ## Roadmap
 
 - [x] Initial structure
-- [ ] More models
+- [x] More models
     - [x] U-net
-    - [ ] Attention U-net
+    - [x] Attention U-net
 - [ ] Run train with custom parameters
 - [ ] Upload checkpoints
 - [ ] Testing functionality
