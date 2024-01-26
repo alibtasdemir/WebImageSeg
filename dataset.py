@@ -1,4 +1,4 @@
-import os
+import os, glob
 from PIL import Image
 from torch.utils.data import Dataset
 import numpy as np
@@ -12,26 +12,27 @@ class WebsegDataset(Dataset):
         self.rgb = rgb
 
         self.mappings = {
-            (255,255,255): 0,   # white
-            (255,0,0): 1,       # red
-            (0,255,0): 2,       # green
-            (0,0,255): 3,       # blue
-            (255,0,255): 4,     # pink
+            (255, 255, 255): 0,  # white
+            (255, 0, 0): 1,  # red
+            (0, 255, 0): 2,  # green
+            (0, 0, 255): 3,  # blue
+            (255, 0, 255): 4,  # pink
         }
 
-        self.images = os.listdir(image_dir)
+        self.images = glob.glob(os.path.join(image_dir, "*"))
 
     def __len__(self):
         return len(self.images)
 
     def __getitem__(self, item):
-        img_path = os.path.join(self.image_dir, self.images[item])
+        img_name = self.images[item].split(os.sep)[-1]
+        img_path = self.images[item]
 
         if self.rgb:
-            mask_path = os.path.join(self.mask_dir, self.images[item])
+            mask_path = os.path.join(self.mask_dir, img_name)
             mask = np.array(Image.open(mask_path).convert("RGB"), dtype=np.float32)
         else:
-            mask_path = os.path.join(self.mask_dir, self.images[item])
+            mask_path = os.path.join(self.mask_dir, img_name)
             mask = np.load(mask_path).astype(np.uint8)
 
         image = np.array(Image.open(img_path).convert("RGB"))
@@ -48,7 +49,7 @@ def test():
     from albumentations.pytorch import ToTensorV2
     train_transform = A.Compose(
         [
-            A.Resize(height=256, width=256),
+            A.Resize(height=512, width=512),
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.1),
             A.Normalize(
@@ -60,7 +61,7 @@ def test():
         ]
     )
 
-    data = WebsegDataset("data/train_frames", "data/train_masks_proc", rgb=False, transform=train_transform)
+    data = WebsegDataset("data/1024/train_frames", "data/1024/train_masks_proc", rgb=False, transform=train_transform)
     print(len(data))
     img, mask = data[0]
     print(img.shape)

@@ -75,6 +75,7 @@ class up_conv(nn.Module):
     """
     Up Convolution Block
     """
+
     def __init__(self, in_ch, out_ch):
         super(up_conv, self).__init__()
         self.up = nn.Sequential(
@@ -87,14 +88,16 @@ class up_conv(nn.Module):
     def forward(self, x):
         x = self.up(x)
         return x
-    
+
+
 class conv_block(nn.Module):
     """
     Convolution Block 
     """
+
     def __init__(self, in_ch, out_ch):
         super(conv_block, self).__init__()
-        
+
         self.conv = nn.Sequential(
             nn.Conv2d(in_ch, out_ch, kernel_size=3, stride=1, padding=1, bias=True),
             nn.BatchNorm2d(out_ch),
@@ -104,10 +107,10 @@ class conv_block(nn.Module):
             nn.ReLU(inplace=True))
 
     def forward(self, x):
-
         x = self.conv(x)
         return x
-  
+
+
 class Attention_block(nn.Module):
     """
     Attention Block
@@ -148,6 +151,7 @@ class AttU_Net(nn.Module):
     Attention Unet implementation
     Paper: https://arxiv.org/abs/1804.03999
     """
+
     def __init__(self, img_ch=3, output_ch=1):
         super(AttU_Net, self).__init__()
 
@@ -183,11 +187,9 @@ class AttU_Net(nn.Module):
 
         self.Conv = nn.Conv2d(filters[0], output_ch, kernel_size=1, stride=1, padding=0)
 
-        #self.active = torch.nn.Sigmoid()
-
+        # self.active = torch.nn.Sigmoid()
 
     def forward(self, x):
-
         e1 = self.Conv1(x)
 
         e2 = self.Maxpool1(e1)
@@ -202,9 +204,9 @@ class AttU_Net(nn.Module):
         e5 = self.Maxpool4(e4)
         e5 = self.Conv5(e5)
 
-        #print(x5.shape)
+        # print(x5.shape)
         d5 = self.Up5(e5)
-        #print(d5.shape)
+        # print(d5.shape)
         x4 = self.Att5(g=d5, x=e4)
         d5 = torch.cat((x4, d5), dim=1)
         d5 = self.Up_conv5(d5)
@@ -226,7 +228,7 @@ class AttU_Net(nn.Module):
 
         out = self.Conv(d2)
 
-      #  out = self.active(out)
+        #  out = self.active(out)
 
         return out
 
@@ -255,36 +257,37 @@ def test():
 
     from utils import get_loaders
 
-    tl, vl = get_loaders("data/train_frames/", "data/train_masks_proc/", "data/val_frames/", "data/val_masks_proc/", 2, train_transform, None, 4, True)
+    tl, vl = get_loaders("data/train_frames/", "data/train_masks_proc/", "data/val_frames/", "data/val_masks_proc/", 2,
+                         train_transform, None, 4, True)
 
     img, mask = next(iter(tl))
     print(img.shape)
-    #x = torch.randn((3, 3, 256, 256))
+    # x = torch.randn((3, 3, 256, 256))
     # model = UNET(in_channels=3, out_channels=5)
     model = AttU_Net(output_ch=5)
     preds = model(img)
-    
+
     print(preds)
     print(preds.shape)
     print(img.shape)
-    #assert preds.shape == x.shape
+    # assert preds.shape == x.shape
 
 
 def small_test():
     from torchsummary import summary
-    
+
     img, mask = torch.randn((1, 3, 256, 256)), torch.randn((3, 3, 256, 256))
     print(img.shape)
-    #x = torch.randn((3, 3, 256, 256))
+    # x = torch.randn((3, 3, 256, 256))
     model = AttU_Net(output_ch=5)
-    #print(summary(model.cuda(), (3, 256, 256)))
+    # print(summary(model.cuda(), (3, 256, 256)))
     preds = model(img)
-    
-    
+
     print(preds)
     print(preds.shape)
     print(img.shape)
-    #assert preds.shape == x.shape
+    # assert preds.shape == x.shape
+
 
 if __name__ == "__main__":
     test()

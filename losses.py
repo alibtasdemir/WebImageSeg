@@ -9,8 +9,7 @@ class DiceLoss(nn.Module):
         super(DiceLoss, self).__init__()
         self.eps = smoothing
         self.nclasses = n_classes
-    
-    
+
     def dice_loss(self, true, pred):
         """Computes the Sørensen–Dice loss.
         Note that PyTorch optimizers minimize a loss. In this
@@ -44,8 +43,7 @@ class DiceLoss(nn.Module):
         cardinality = torch.sum(probas + true_1_hot, dims)
         dice_loss = (2. * intersection / (cardinality + self.eps)).mean()
         return (1 - dice_loss)
-    
-    
+
     def dice_score(self, yt, yp):
         yp = torch.argmax(yp, dim=1).float().squeeze()
         yt = torch.argmax(yt, dim=1).float().squeeze()
@@ -55,15 +53,17 @@ class DiceLoss(nn.Module):
             mask_yp = (yp == i)
             inter = mask_yt * mask_yp
             intersection = torch.sum(torch.sum(inter, axis=1), axis=1)
-            dice += (2. * intersection * self.smooth) / (torch.sum(torch.sum(mask_yt, axis=1), axis=1) + torch.sum(torch.sum(mask_yp, axis=1), axis=1) + self.smooth)
+            dice += (2. * intersection * self.smooth) / (
+                        torch.sum(torch.sum(mask_yt, axis=1), axis=1) + torch.sum(torch.sum(mask_yp, axis=1),
+                                                                                  axis=1) + self.smooth)
         return torch.mean(dice)
-    
-    
-    def diceScore_multilabel(self, y_true: torch.Tensor, y_pred: torch.Tensor, n_classes: int = 5, smooth: float = 0.0001):
+
+    def diceScore_multilabel(self, y_true: torch.Tensor, y_pred: torch.Tensor, n_classes: int = 5,
+                             smooth: float = 0.0001):
         y_pred = torch.argmax(y_pred, dim=1).float()
         y_pred = y_pred.unsqueeze(1)
         y_true = torch.argmax(y_true, dim=1).float().unsqueeze(1)
-        
+
         dices = []
         for yt, yp in zip(torch.split(y_true, 1), torch.split(y_pred, 1)):
             dice = 0
@@ -74,14 +74,45 @@ class DiceLoss(nn.Module):
                 intersection = np.sum(mask_yt * mask_yp)
                 dice += (2. * intersection * smooth) / (np.sum(mask_yt) + np.sum(mask_yp) + smooth)
                 # print(f"Index: {i}\n\tYT pixels: {np.sum(mask_yt)}\n\tYP pixels: {np.sum(mask_yp)}\n\tIntersect: {intersection}\n\tDice: {dice}")
-            dices.append(dice/n_classes)
-                
+            dices.append(dice / n_classes)
+
         # print(dices)
-        #return np.array(dices).mean()
+        # return np.array(dices).mean()
         return torch.Tensor(dices).mean()
-        
+
     def forward(self, pred, target):
-        #x = self.diceScore_multilabel(target, pred, self.nclasses, self.smooth)
+        # x = self.diceScore_multilabel(target, pred, self.nclasses, self.smooth)
         x = self.dice_loss(target, pred)
-        #x = torch.Tensor(x)
+        # x = torch.Tensor(x)
         return x
+
+
+class TverskyLoss(nn.Module):
+    def __init__(self, alpha, beta):
+        super(TverskyLoss, self).__init__()
+        self.alpha = alpha
+        self.beta = beta
+
+    def forward(self, y_pred, y_true):
+        """
+        y_pred: predicted tensor
+        y_true: target tensor
+        """
+        eps = 1e-6
+
+        # flatten the tensors to 1D
+        y_pred = y_pred.view(-1)
+        y_true = y_true.view(-1)
+
+        # true positive, false positive, false negative
+        tp = torch.sum(y_pred * y_true)
+        fp = torch.sum(y_pred) - tp
+        fn = torch.sum(y_true) - tp
+
+        # Tversky index
+        tversky = (tp + eps) / (tp + self.alpha * fp + self.beta * fn + eps)
+
+        # Tversky loss
+        loss = 1 - tversky
+
+        return loss
